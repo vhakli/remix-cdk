@@ -1,7 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import path from "path";
 import type { Construct } from "constructs";
-import * as s3 from "aws-cdk-lib/aws-s3";
 import * as apigw from "@aws-cdk/aws-apigatewayv2-alpha";
 import {
   HttpUrlIntegration,
@@ -9,69 +8,17 @@ import {
 } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
-import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
-import * as iam from "aws-cdk-lib/aws-iam";
-import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import type * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+
+interface RemixlambdaStackProps extends cdk.StackProps {
+  distribution: cloudfront.Distribution;
+}
 
 export class RemixlambdaStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: RemixlambdaStackProps) {
     super(scope, id, props);
 
-    const bucket = new s3.Bucket(this, "RemixLambdaTestBucket", {
-      versioned: true,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-      accessControl: s3.BucketAccessControl.PRIVATE,
-      objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-    });
-
-    const deployment = new s3deploy.BucketDeployment(this, "DeployAssets", {
-      sources: [s3deploy.Source.asset(path.join(__dirname, "..", "public"))],
-      destinationBucket: bucket,
-    });
-
-    const distribution = new cloudfront.Distribution(
-      this,
-      "RemixLambdaTestDistribution",
-      {
-        defaultBehavior: {
-          origin: new origins.S3Origin(bucket),
-          cachePolicy: new cloudfront.CachePolicy(
-            this,
-            "RemixLambdaTestCachePolicy",
-            {
-              enableAcceptEncodingBrotli: true,
-              enableAcceptEncodingGzip: true,
-            },
-          ),
-          viewerProtocolPolicy:
-            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        },
-        priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
-      },
-    );
-
-    const policyStatement = new iam.PolicyStatement({
-      actions: ["s3:GetObject"],
-      resources: [bucket.arnForObjects("*")],
-      sid: "AllowCloudFrontServicePrincipalReadOnly",
-      principals: [
-        new iam.PrincipalWithConditions(
-          new iam.ServicePrincipal("cloudfront.amazonaws.com"),
-          {
-            StringEquals: {
-              "AWS:SourceArn":
-                `arn:aws:cloudfront::${this.account}:` +
-                `distribution/${distribution.distributionId}}`,
-            },
-          },
-        ),
-      ],
-    });
-
-    bucket.addToResourcePolicy(policyStatement);
+    const { distribution } = props;
 
     const testhandler = new NodejsFunction(this, "RemixLambdaTestHandler2", {
       entry: path.join(__dirname, "..", "server", "index.js"),
