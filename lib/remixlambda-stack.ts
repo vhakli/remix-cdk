@@ -12,6 +12,7 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 
 export class RemixlambdaStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -26,6 +27,11 @@ export class RemixlambdaStack extends cdk.Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
     });
 
+    const deployment = new s3deploy.BucketDeployment(this, "DeployAssets", {
+      sources: [s3deploy.Source.asset(path.join(__dirname, "..", "public"))],
+      destinationBucket: bucket,
+    });
+
     const distribution = new cloudfront.Distribution(
       this,
       "RemixLambdaTestDistribution",
@@ -38,13 +44,13 @@ export class RemixlambdaStack extends cdk.Stack {
             {
               enableAcceptEncodingBrotli: true,
               enableAcceptEncodingGzip: true,
-            }
+            },
           ),
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         },
         priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
-      }
+      },
     );
 
     const policyStatement = new iam.PolicyStatement({
@@ -60,7 +66,7 @@ export class RemixlambdaStack extends cdk.Stack {
                 `arn:aws:cloudfront::${this.account}:` +
                 `distribution/${distribution.distributionId}}`,
             },
-          }
+          },
         ),
       ],
     });
@@ -75,6 +81,7 @@ export class RemixlambdaStack extends cdk.Stack {
     });
 
     const api = new apigw.HttpApi(this, "RemixLambdaTestApiGw");
+
     api.addRoutes({
       path: "/{proxy+}",
       methods: [apigw.HttpMethod.ANY],
@@ -85,12 +92,10 @@ export class RemixlambdaStack extends cdk.Stack {
       methods: [apigw.HttpMethod.GET],
       integration: new HttpUrlIntegration(
         "Test",
-        // distribution.domainName.toString(),
-        // bucket.bucketWebsiteUrl.toString(),
-        "https://jsonplaceholder.typicode.com/posts",
+        `https://${distribution.domainName}/{proxy}`,
         {
           method: apigw.HttpMethod.GET,
-        }
+        },
       ),
     });
   }
