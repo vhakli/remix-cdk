@@ -8,17 +8,20 @@ import {
 } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import type * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import type * as route53 from "aws-cdk-lib/aws-route53";
 
 interface RemixlambdaStackProps extends cdk.StackProps {
   distribution: cloudfront.Distribution;
+  hostedZone: route53.HostedZone;
 }
 
 export class RemixlambdaStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: RemixlambdaStackProps) {
     super(scope, id, props);
 
-    const { distribution } = props;
+    const { distribution, hostedZone } = props;
 
     const testhandler = new NodejsFunction(this, "RemixLambdaTestHandler2", {
       entry: path.join(__dirname, "..", "server", "index.js"),
@@ -27,7 +30,9 @@ export class RemixlambdaStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(5),
     });
 
-    const api = new apigw.HttpApi(this, "RemixLambdaTestApiGw");
+    const api = new apigw.HttpApi(this, "RemixLambdaTestApiGw", {
+      disableExecuteApiEndpoint: true,
+    });
 
     api.addRoutes({
       path: "/{proxy+}",
@@ -42,8 +47,27 @@ export class RemixlambdaStack extends cdk.Stack {
         `https://${distribution.domainName}/{proxy}`,
         {
           method: apigw.HttpMethod.GET,
-        },
+        }
       ),
     });
+
+    const certificate = new acm.Certificate(
+      this,
+      "RemixLambdaTestCertificate",
+      {
+        domainName: "",
+        validation: acm.CertificateValidation.fromDns(hostedZone),
+      }
+    );
+
+    // const domainName = new apigw.DomainName(this, "RemixLambdaTestDomainName", {
+    //   domainName: "",
+    //   certificate:
+    // })
+
+    // const apiMapping = new apigw.ApiMapping(this, "RemixLambdaTestApiMapping", {
+    //   api: apitest,
+    //   domainName,
+    // })
   }
 }

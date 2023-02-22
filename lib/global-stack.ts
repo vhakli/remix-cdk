@@ -6,9 +6,12 @@ import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as route53 from "aws-cdk-lib/aws-route53";
 
 export class GlobalStack extends cdk.Stack {
   public readonly distribution: cloudfront.Distribution;
+  public readonly hostedZone: route53.HostedZone;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -21,7 +24,7 @@ export class GlobalStack extends cdk.Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
     });
 
-    const deployment = new s3deploy.BucketDeployment(this, "DeployAssets", {
+    new s3deploy.BucketDeployment(this, "DeployAssets", {
       sources: [s3deploy.Source.asset(path.join(__dirname, "..", "public"))],
       destinationBucket: bucket,
     });
@@ -38,13 +41,13 @@ export class GlobalStack extends cdk.Stack {
             {
               enableAcceptEncodingBrotli: true,
               enableAcceptEncodingGzip: true,
-            },
+            }
           ),
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         },
         priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
-      },
+      }
     );
 
     const policyStatement = new iam.PolicyStatement({
@@ -60,11 +63,19 @@ export class GlobalStack extends cdk.Stack {
                 `arn:aws:cloudfront::${this.account}:` +
                 `distribution/${this.distribution.distributionId}}`,
             },
-          },
+          }
         ),
       ],
     });
 
     bucket.addToResourcePolicy(policyStatement);
+
+    this.hostedZone = new route53.HostedZone(
+      this,
+      "RemixLambdaTestHostedZone",
+      {
+        zoneName: "",
+      }
+    );
   }
 }

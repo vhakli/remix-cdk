@@ -12,10 +12,12 @@ const infra = new GlobalStack(app, "GlobalStack", {
 
 new RemixlambdaStack(app, "RemixlambdaStack", {
   distribution: infra.distribution,
+  hostedZone: infra.hostedZone,
   env: { region: "eu-north-1" },
 });
-new RemixlambdaStack(app, "RemixlambdaStackUs", {
-  distribution: infra.distribution,
-  crossRegionReferences: true,
-  env: { region: "us-east-1" },
-});
+// new RemixlambdaStack(app, "RemixlambdaStackUs", {
+//   distribution: infra.distribution,
+//   hostedZone: infra.hostedZone,
+//   crossRegionReferences: true,
+//   env: { region: "us-east-1" },
+// });
