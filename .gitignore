@@ -9,3 +9,5 @@ cdk.out
 
 public/**/*.js
 server/**/*.js
+
+*.env
