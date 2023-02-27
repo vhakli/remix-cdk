@@ -1,7 +1,19 @@
 /** @type {import('@remix-run/dev').AppConfig} */
-module.exports = {
+const commonConfig = {
     ignoredRouteFiles: ["**/.*"],
-    publicPath: "/_static/build/",
-    server: "./server.js",
-    serverBuildPath: "server/index.js",
+    future: {
+        v2_routeConvention: true,
+    },
 };
+
+module.exports =
+    process.env.NODE_ENV === "production"
+        ? {
+              ...commonConfig,
+              publicPath: "/_static/build/",
+              server: "./server.js",
+              serverBuildPath: "server/index.js",
+          }
+        : {
+              ...commonConfig,
+          };
